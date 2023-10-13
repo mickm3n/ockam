@@ -7,7 +7,7 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use rand::random;
 
-use ockam_api::cli_state::StateDirTrait;
+use ockam_api::cli_state::{CliStateError, StateDirTrait};
 use ockam_core::env::get_env_with_default;
 
 use crate::util::api::TrustContextOpts;
@@ -34,6 +34,15 @@ pub fn delete_node(opts: &CommandGlobalOpts, name: &str, force: bool) -> miette:
     Ok(())
 }
 
+pub fn get_all_node_names(opts: &CommandGlobalOpts) -> miette::Result<Vec<String>> {
+    let nodes_states = opts.state.nodes.list()?;
+    let mut nodes = Vec::new();
+    for s in nodes_states {
+        nodes.push(s.name().to_string());
+    }
+    Ok(nodes)
+}
+
 pub fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result<()> {
     let nodes_states = opts.state.nodes.list()?;
     let mut deletion_errors = Vec::new();
@@ -49,6 +58,23 @@ pub fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result
         ));
     }
     Ok(())
+}
+
+pub fn delete_selected_nodes(
+    opts: &CommandGlobalOpts,
+    selected_node_names: Vec<String>,
+    force: bool,
+) -> miette::Result<(Vec<String>, Vec<(String, CliStateError)>)> {
+    let mut deleted_nodes = Vec::new();
+    let mut deletion_errors = Vec::new();
+    for node_name in selected_node_names {
+        if let Err(e) = opts.state.nodes.delete_sigkill(&node_name, force) {
+            deletion_errors.push((node_name, e));
+        } else {
+            deleted_nodes.push(node_name);
+        }
+    }
+    Ok((deleted_nodes, deletion_errors))
 }
 
 pub fn check_default(opts: &CommandGlobalOpts, name: &str) -> bool {
