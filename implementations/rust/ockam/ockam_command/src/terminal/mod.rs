@@ -15,6 +15,8 @@ pub use fmt::*;
 use mode::*;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::errcode::Kind;
+use r3bl_rs_utils_core::*;
+use r3bl_tuify::*;
 
 use crate::error::Error;
 use crate::{fmt_list, fmt_log, fmt_warn, OutputFormat, Result};
@@ -32,6 +34,8 @@ pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     no_input: bool,
     output_format: OutputFormat,
     mode: WriteMode,
+    max_width_col_count: usize,
+    max_height_row_count: usize,
 }
 
 impl<T: TerminalWriter, W> Terminal<T, W> {
@@ -203,6 +207,7 @@ impl<W: TerminalWriter> Terminal<W> {
         let no_input = Self::should_disable_user_input(no_input);
         let stdout = W::stdout(no_color);
         let stderr = W::stderr(no_color);
+        let max_width_col_count = get_size().map(|it| it.col_count).unwrap_or(ch!(80)).into();
         Self {
             stdout,
             stderr,
@@ -210,6 +215,8 @@ impl<W: TerminalWriter> Terminal<W> {
             no_input,
             output_format,
             mode: ToStdErr,
+            max_width_col_count,
+            max_height_row_count: 5,
         }
     }
 
@@ -357,6 +364,8 @@ impl<W: TerminalWriter> Terminal<W, ToStdErr> {
             mode: ToStdOut {
                 output: Output::new(),
             },
+            max_width_col_count: self.max_width_col_count,
+            max_height_row_count: self.max_height_row_count,
         }
     }
 }
