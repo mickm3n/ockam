@@ -259,6 +259,52 @@ impl<W: TerminalWriter> Terminal<W> {
         }
     }
 
+    pub fn confirm_interactively(&self, header: String) -> Option<bool> {
+        let user_input = select_from_list(
+            header,
+            ["YES", "NO"].iter().map(|it| it.to_string()).collect(),
+            self.max_height_row_count,
+            self.max_width_col_count,
+            SelectionMode::Single,
+            StyleSheet::default(),
+        );
+
+        match &user_input {
+            Some(it) => {
+                if it.contains(&"YES".to_string()) {
+                    return Some(true);
+                } else {
+                    return Some(false);
+                }
+            }
+            None => Some(false),
+        }
+    }
+
+    /// # Returns
+    ///
+    /// `None` if the user is not able to select an item (e.g. not a TTY, `--no-input` flag, etc.)
+    /// Empty `Vec` if the user did not select any item
+    pub fn select_multiple(&self, header: String, items: Vec<String>) -> Option<Vec<String>> {
+        if !self.can_ask_for_user_input() {
+            return None;
+        }
+
+        let user_selected_list = select_from_list(
+            header,
+            items,
+            self.max_height_row_count,
+            self.max_width_col_count,
+            SelectionMode::Multiple,
+            StyleSheet::default(),
+        );
+
+        match user_selected_list {
+            Some(it) => Some(it),
+            None => Some(Vec::new()),
+        }
+    }
+
     pub fn can_ask_for_user_input(&self) -> bool {
         !self.no_input && self.stderr.is_tty() && !self.quiet
     }
