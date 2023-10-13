@@ -259,8 +259,8 @@ impl<W: TerminalWriter> Terminal<W> {
         }
     }
 
-    fn can_ask_for_user_input(&self) -> bool {
-        !self.no_input && self.stderr.is_tty()
+    pub fn can_ask_for_user_input(&self) -> bool {
+        !self.no_input && self.stderr.is_tty() && !self.quiet
     }
 
     fn should_disable_color(no_color: bool) -> bool {
