@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 
 use crate::node::get_node_name;
-use crate::node::util::{delete_all_nodes, delete_node};
+use crate::node::util::{delete_all_nodes, delete_node, delete_selected_nodes, get_all_node_names};
 
 use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
@@ -40,32 +40,90 @@ impl DeleteCommand {
     }
 }
 
+enum DeleteMode {
+    All,
+    Selected(Option<Vec<String>>),
+    Single(Option<String>),
+}
+
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-    let node_name = get_node_name(&opts.state, &cmd.node_name);
-    let prompt_msg = if cmd.all {
-        "Are you sure you want to delete all nodes?"
-    } else {
-        "Are you sure you want to delete this node?"
-    };
-    if opts
-        .terminal
-        .confirmed_with_flag_or_prompt(cmd.yes, prompt_msg)?
+    let all_nodes = get_all_node_names(&opts)?;
+
+    let delete_mode = if cmd.all {
+        DeleteMode::All
+    } else if cmd.node_name.is_none()
+        && !all_nodes.is_empty()
+        && opts.terminal.can_ask_for_user_input()
     {
-        if cmd.all {
-            delete_all_nodes(&opts, cmd.force)?;
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!("All nodes have been deleted"))
-                .write_line()?;
-        } else {
-            delete_node(&opts, &node_name, cmd.force)?;
-            opts.terminal
-                .stdout()
-                .plain(fmt_ok!("Node with name '{}' has been deleted", &node_name))
-                .machine(&node_name)
-                .json(serde_json::json!({ "name": &node_name }))
-                .write_line()?;
+        DeleteMode::Selected(opts.terminal.select_multiple(
+            "Select one or more nodes that you want to delete".to_string(),
+            all_nodes,
+        ))
+    } else {
+        DeleteMode::Single(cmd.node_name)
+    };
+
+    match delete_mode {
+        DeleteMode::All => {
+            if opts.terminal.confirmed_with_flag_or_prompt(
+                cmd.yes,
+                "Are you sure you want to delete all nodes?",
+            )? {
+                delete_all_nodes(&opts, cmd.force)?;
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("All nodes have been deleted"))
+                    .write_line()?;
+            }
         }
-    }
+        DeleteMode::Single(cmd_node_name) => {
+            if opts.terminal.confirmed_with_flag_or_prompt(
+                cmd.yes,
+                "Are you sure you want to delete this node?",
+            )? {
+                let node_name = get_node_name(&opts.state, &cmd_node_name);
+                delete_node(&opts, &node_name, cmd.force)?;
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Node with name '{}' has been deleted", &node_name))
+                    .machine(&node_name)
+                    .json(serde_json::json!({ "node": { "name": &node_name } }))
+                    .write_line()?;
+            }
+        }
+        DeleteMode::Selected(option_selected_list) => {
+            let selected_list = option_selected_list.unwrap();
+            if selected_list.is_empty() {
+                opts.terminal
+                    .stdout()
+                    .plain("No nodes selected for deletion")
+                    .write_line()?;
+                return Ok(());
+            }
+
+            if opts
+                .terminal
+                .confirm_interactively(format!(
+                    "Would you like to delete these items : {:?}?",
+                    selected_list
+                ))
+                .unwrap_or(false)
+            {
+                let (deleted_nodes, delete_fail_nodes_with_error) =
+                    delete_selected_nodes(&opts, selected_list, cmd.force)?;
+
+                for deleted_node in deleted_nodes {
+                    println!("✅ Deleted Node: '{}'", &deleted_node);
+                }
+
+                for (delete_fail_node, error) in delete_fail_nodes_with_error {
+                    println!(
+                        "⚠️ Failed to delete Node: '{}', Error: '{}'",
+                        delete_fail_node, error
+                    );
+                }
+            }
+        }
+    };
     Ok(())
 }
