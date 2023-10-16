@@ -1,5 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::cli_state::StateDirTrait;
 
 use crate::node::get_node_name;
 use crate::node::util::{delete_all_nodes, delete_node, delete_selected_nodes, get_all_node_names};
@@ -47,7 +48,7 @@ enum DeleteMode {
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-    let all_nodes = get_all_node_names(&opts)?;
+    let all_nodes = opts.state.nodes.list_items_names()?;
 
     let delete_mode = if cmd.all {
         DeleteMode::All
