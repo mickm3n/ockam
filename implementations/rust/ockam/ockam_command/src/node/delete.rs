@@ -110,16 +110,11 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
             )) {
                 let output = selected_node_names
                     .iter()
-                    .map(|name| (name, opts.state.nodes.delete_sigkill(name, cmd.force)))
-                    .map(|(name, res)| {
-                        if res.is_ok() {
-                            fmt_ok!("Deleted Node: '{}'\n", name)
+                    .map(|name| {
+                        if opts.state.nodes.delete_sigkill(name, cmd.force).is_ok() {
+                            fmt_ok!("Node '{name}' deleted\n")
                         } else {
-                            fmt_warn!(
-                                "Failed to delete Node: '{}', Error: '{}'\n",
-                                name,
-                                res.as_ref().unwrap_err()
-                            )
+                            fmt_warn!("Failed to delete Node '{name}'\n")
                         }
                     })
                     .collect::<String>();
