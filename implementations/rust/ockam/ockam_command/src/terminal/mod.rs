@@ -259,7 +259,7 @@ impl<W: TerminalWriter> Terminal<W> {
         }
     }
 
-    pub fn confirm_interactively(&self, header: String) -> Option<bool> {
+    pub fn confirm_interactively(&self, header: String) -> bool {
         let user_input = select_from_list(
             header,
             ["YES", "NO"].iter().map(|it| it.to_string()).collect(),
@@ -272,12 +272,12 @@ impl<W: TerminalWriter> Terminal<W> {
         match &user_input {
             Some(it) => {
                 if it.contains(&"YES".to_string()) {
-                    return Some(true);
+                    return true;
                 } else {
-                    return Some(false);
+                    return false;
                 }
             }
-            None => Some(false),
+            None => false,
         }
     }
 

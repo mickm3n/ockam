@@ -104,14 +104,10 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                 return Ok(());
             }
 
-            if opts
-                .terminal
-                .confirm_interactively(format!(
-                    "Would you like to delete these items : {:?}?",
-                    selected_node_names
-                ))
-                .unwrap_or(false)
-            {
+            if opts.terminal.confirm_interactively(format!(
+                "Would you like to delete these items : {:?}?",
+                selected_node_names
+            )) {
                 let output = selected_node_names
                     .iter()
                     .map(|name| (name, opts.state.nodes.delete_sigkill(name, cmd.force)))
