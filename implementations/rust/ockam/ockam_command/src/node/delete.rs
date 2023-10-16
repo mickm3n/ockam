@@ -110,19 +110,31 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                 ))
                 .unwrap_or(false)
             {
-                let (deleted_nodes, delete_fail_nodes_with_error) =
-                    delete_selected_nodes(&opts, selected_list, cmd.force)?;
-
-                for deleted_node in deleted_nodes {
-                    println!("✅ Deleted Node: '{}'", &deleted_node);
-                }
-
-                for (delete_fail_node, error) in delete_fail_nodes_with_error {
-                    println!(
-                        "⚠️ Failed to delete Node: '{}', Error: '{}'",
-                        delete_fail_node, error
-                    );
-                }
+                selected_node_names
+                    .iter()
+                    .map(|name| (name, opts.state.nodes.delete_sigkill(name, cmd.force)))
+                    .for_each(|(name, res)| {
+                        if res.is_ok() {
+                            opts.terminal
+                                .clone()
+                                .stdout()
+                                .plain(format!("✅ Deleted Node: '{}'", name))
+                                .machine(name)
+                                .write_line()
+                                .unwrap();
+                        } else {
+                            opts.terminal
+                                .clone()
+                                .stdout()
+                                .plain(format!(
+                                    "⚠️ Failed to delete Node: '{}', Error: '{}'",
+                                    name,
+                                    res.as_ref().unwrap_err()
+                                ))
+                                .write_line()
+                                .unwrap();
+                        }
+                    });
             }
         }
     };
