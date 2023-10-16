@@ -6,7 +6,7 @@ use crate::node::get_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
 
 use crate::util::local_cmd;
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{docs, fmt_ok, fmt_warn, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -118,7 +118,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                             opts.terminal
                                 .clone()
                                 .stdout()
-                                .plain(format!("✅ Deleted Node: '{}'", name))
+                                .plain(fmt_ok!("Deleted Node: '{}'", name))
                                 .machine(name)
                                 .write_line()
                                 .unwrap();
@@ -126,8 +126,8 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                             opts.terminal
                                 .clone()
                                 .stdout()
-                                .plain(format!(
-                                    "⚠️ Failed to delete Node: '{}', Error: '{}'",
+                                .plain(fmt_warn!(
+                                    "Failed to delete Node: '{}', Error: '{}'",
                                     name,
                                     res.as_ref().unwrap_err()
                                 ))
