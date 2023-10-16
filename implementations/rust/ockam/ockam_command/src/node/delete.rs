@@ -3,7 +3,7 @@ use colorful::Colorful;
 use ockam_api::cli_state::StateDirTrait;
 
 use crate::node::get_node_name;
-use crate::node::util::{delete_all_nodes, delete_node, delete_selected_nodes, get_all_node_names};
+use crate::node::util::{delete_all_nodes, delete_node};
 
 use crate::util::local_cmd;
 use crate::{docs, fmt_ok, CommandGlobalOpts};
