@@ -2,7 +2,7 @@ use clap::Args;
 use colorful::Colorful;
 use ockam_api::cli_state::StateDirTrait;
 
-use crate::node::get_node_name;
+use crate::node::get_default_node_name;
 use crate::node::util::{delete_all_nodes, delete_node};
 
 use crate::util::local_cmd;
@@ -43,8 +43,9 @@ impl DeleteCommand {
 
 enum DeleteMode {
     All,
-    Selected(Option<Vec<String>>),
-    Single(Option<String>),
+    Selected(Vec<String>),
+    Single(String),
+    Default,
 }
 
 fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
@@ -52,16 +53,19 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
 
     let delete_mode = if cmd.all {
         DeleteMode::All
-    } else if cmd.node_name.is_none()
-        && !all_nodes.is_empty()
-        && opts.terminal.can_ask_for_user_input()
-    {
-        DeleteMode::Selected(opts.terminal.select_multiple(
-            "Select one or more nodes that you want to delete".to_string(),
-            all_nodes,
-        ))
+    } else if cmd.node_name.is_some() {
+        DeleteMode::Single(cmd.node_name.unwrap())
+    } else if !all_nodes.is_empty() && opts.terminal.can_ask_for_user_input() {
+        DeleteMode::Selected(
+            opts.terminal
+                .select_multiple(
+                    "Select one or more nodes that you want to delete".to_string(),
+                    all_nodes,
+                )
+                .unwrap(),
+        )
     } else {
-        DeleteMode::Single(cmd.node_name)
+        DeleteMode::Default
     };
 
     match delete_mode {
@@ -77,12 +81,11 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                     .write_line()?;
             }
         }
-        DeleteMode::Single(cmd_node_name) => {
+        DeleteMode::Single(node_name) => {
             if opts.terminal.confirmed_with_flag_or_prompt(
                 cmd.yes,
                 "Are you sure you want to delete this node?",
             )? {
-                let node_name = get_node_name(&opts.state, &cmd_node_name);
                 delete_node(&opts, &node_name, cmd.force)?;
                 opts.terminal
                     .stdout()
@@ -92,8 +95,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                     .write_line()?;
             }
         }
-        DeleteMode::Selected(option_selected_node_names) => {
-            let selected_node_names = option_selected_node_names.unwrap();
+        DeleteMode::Selected(selected_node_names) => {
             if selected_node_names.is_empty() {
                 opts.terminal
                     .stdout()
@@ -127,6 +129,21 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                     .collect::<String>();
 
                 opts.terminal.stdout().plain(output).write_line()?;
+            }
+        }
+        DeleteMode::Default => {
+            if opts.terminal.confirmed_with_flag_or_prompt(
+                cmd.yes,
+                "Are you sure you want to delete the default node?",
+            )? {
+                let node_name = get_default_node_name(&opts.state);
+                delete_node(&opts, &node_name, cmd.force)?;
+                opts.terminal
+                    .stdout()
+                    .plain(fmt_ok!("Node with name '{}' has been deleted", &node_name))
+                    .machine(&node_name)
+                    .json(serde_json::json!({ "node": { "name": &node_name } }))
+                    .write_line()?;
             }
         }
     };
