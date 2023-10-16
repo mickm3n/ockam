@@ -92,9 +92,9 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                     .write_line()?;
             }
         }
-        DeleteMode::Selected(option_selected_list) => {
-            let selected_list = option_selected_list.unwrap();
-            if selected_list.is_empty() {
+        DeleteMode::Selected(option_selected_node_names) => {
+            let selected_node_names = option_selected_node_names.unwrap();
+            if selected_node_names.is_empty() {
                 opts.terminal
                     .stdout()
                     .plain("No nodes selected for deletion")
@@ -106,7 +106,7 @@ fn run_impl(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
                 .terminal
                 .confirm_interactively(format!(
                     "Would you like to delete these items : {:?}?",
-                    selected_list
+                    selected_node_names
                 ))
                 .unwrap_or(false)
             {
